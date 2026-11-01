@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "author": "Meraj Alam Siddique",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "board-pi-pico-w",
+      "id": "pico",
+      "top": -22.45,
+      "left": 13.15,
+      "attrs": { "env": "micropython-20241129-v1.24.1" }
+    },
+    {
+      "type": "wokwi-dht22",
+      "id": "dht1",
+      "top": -16.2,
+      "left": 248.7,
+      "rotate": 90,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r1",
+      "top": 32.75,
+      "left": 134.4,
+      "attrs": { "value": "1000" }
+    }
+  ],
+  "connections": [
+    [ "pico:3V3", "dht1:VCC", "green", [ "h0" ] ],
+    [ "pico:GND.7", "dht1:GND", "black", [ "h0" ] ],
+    [ "dht1:SDA", "r1:2", "green", [ "h0" ] ],
+    [ "r1:1", "pico:3V3", "green", [ "v-9.6" ] ],
+    [ "pico:GP0", "dht1:SDA", "blue", [ "h-19.2", "v-19.2", "h201.6" ] ]
+  ],
+  "dependencies": {}
+}

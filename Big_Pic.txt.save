@@ -1,0 +1,318 @@
+I am building an IoT-based Smart Temperature and Humidity Monitoring System using Wokwi, Raspberry Pi Pico W, a DHT22 sensor, and ThingSpeak. The sensor-to-cloud part of the project is already working successfully. I now want to build the next stage: a modern local web dashboard that runs on my laptop and reads live sensor data from ThingSpeak.
+
+## 1. Project Completed So Far
+
+### Hardware Simulation
+
+I am using Wokwi to simulate the following hardware:
+
+- Raspberry Pi Pico W
+- DHT22 Temperature and Humidity Sensor
+- Optional LED
+
+The DHT22 sensor is connected to the Raspberry Pi Pico W as follows:
+
+- DHT22 DATA → GP0
+- LED → GP1
+- DHT22 power and ground are connected appropriately
+
+The Raspberry Pi Pico W connects to the internet through Wokwi's simulated Wi-Fi network:
+
+```text
+SSID: Wokwi-GUEST
+Password: empty
+```
+
+## 2. Current MicroPython Program
+
+The Raspberry Pi Pico W is running MicroPython.
+
+The current system performs the following operations:
+
+1. Connects the Raspberry Pi Pico W to the Wokwi-GUEST Wi-Fi network.
+2. Reads temperature from the DHT22 sensor.
+3. Reads humidity from the DHT22 sensor.
+4. Collects a total of 30 readings.
+5. Uses an interval of approximately 20 seconds between readings.
+6. Stores all temperature readings in a Python list.
+7. Stores all humidity readings in a Python list.
+8. Saves every reading to a local CSV file called:
+
+```text
+dht22_log.csv
+```
+
+The CSV file contains:
+
+```text
+Reading, Time_s, Temperature_C, Humidity_%
+```
+
+9. Calculates the following statistics after all readings are completed:
+
+### Temperature Statistics
+
+- Minimum temperature
+- Maximum temperature
+- Average temperature
+
+### Humidity Statistics
+
+- Minimum humidity
+- Maximum humidity
+- Average humidity
+
+10. The system also controls an LED:
+
+- If temperature is greater than 30°C, the LED turns ON.
+- Otherwise, the LED turns OFF.
+
+## 3. ThingSpeak Cloud Integration
+
+The Raspberry Pi Pico W is successfully connected to ThingSpeak.
+
+The system uses the ThingSpeak Write API Key to upload sensor readings.
+
+The ThingSpeak channel contains:
+
+- Field 1 → Temperature
+- Field 2 → Humidity
+
+The Pico W uploads data approximately every 20 seconds.
+
+The current MicroPython code successfully sends:
+
+```text
+field1 = temperature
+field2 = humidity
+```
+
+to ThingSpeak.
+
+The serial monitor confirms successful uploads with responses such as:
+
+```text
+ThingSpeak Response: 1
+ThingSpeak Response: 2
+ThingSpeak Response: 3
+```
+
+This confirms that the cloud upload is working correctly.
+
+The ThingSpeak channel also successfully displays graphs for:
+
+- Temperature
+- Humidity
+
+Therefore, the current architecture is:
+
+```text
+DHT22 Sensor
+      ↓
+Raspberry Pi Pico W
+      ↓
+Wokwi Simulated Wi-Fi
+      ↓
+ThingSpeak Cloud
+      ↓
+Temperature and Humidity Data Storage
+```
+
+## 4. Next Stage: Local Web Dashboard
+
+I now want to create a local web dashboard that runs on my laptop.
+
+The dashboard should NOT depend on manually viewing ThingSpeak's default graphs.
+
+Instead, I want to create my own professional and modern dashboard using:
+
+- HTML
+- CSS
+- JavaScript
+
+If necessary, a lightweight local backend can also be used, such as:
+
+- Python Flask, or
+- Node.js
+
+However, if the ThingSpeak API can be accessed directly from JavaScript without problems, a simple HTML/CSS/JavaScript solution is preferred.
+
+The dashboard will use the ThingSpeak READ API to retrieve the latest sensor data.
+
+The system should use:
+
+- ThingSpeak Channel ID
+- ThingSpeak Read API Key, if required
+
+These should be stored as configuration variables and should be easy to change.
+
+## 5. Dashboard Requirements
+
+Create a modern, clean, responsive IoT dashboard.
+
+The dashboard should have the following main sections.
+
+### A. Header
+
+Display a professional project title such as:
+
+```text
+IoT Smart Climate Monitoring System
+```
+
+Also display:
+
+```text
+Live Data from ThingSpeak
+```
+
+Show a connection/status indicator such as:
+
+- Online
+- Connected
+- Last Updated Time
+
+## B. Live Sensor Cards
+
+Create two prominent sensor cards.
+
+### Temperature Card
+
+Display:
+
+- Current temperature
+- Unit: °C
+- Last update time
+- Visual temperature icon
+
+Example:
+
+```text
+🌡 Temperature
+
+24.0 °C
+
+Status: Normal
+```
+
+### Humidity Card
+
+Display:
+
+- Current humidity
+- Unit: %
+- Last update time
+- Visual humidity icon
+
+Example:
+
+```text
+💧 Humidity
+
+40.0 %
+
+Status: Normal
+```
+
+The cards should automatically update when new data arrives from ThingSpeak.
+
+## C. Temperature Graph
+
+Create a professional interactive graph showing historical temperature values.
+
+Requirements:
+
+- X-axis → Date and time
+- Y-axis → Temperature in °C
+- Read data from ThingSpeak Field 1
+- Show multiple recent readings
+- Automatically refresh periodically
+- Use a suitable JavaScript chart library such as Chart.js
+
+## D. Humidity Graph
+
+Create a second professional interactive graph showing historical humidity values.
+
+Requirements:
+
+- X-axis → Date and time
+- Y-axis → Humidity percentage
+- Read data from ThingSpeak Field 2
+- Show multiple recent readings
+- Automatically refresh periodically
+- Use Chart.js or another suitable chart library
+
+The temperature and humidity graphs should be clearly separated and easy to understand.
+
+## 6. Automatic AC Control Feature
+
+After the monitoring and graph sections, create an AC Control section.
+
+The purpose of this feature is to simulate or represent an intelligent air-conditioning control system.
+
+The system should analyze the temperature and humidity values and automatically decide the appropriate cooling action.
+
+For example:
+
+### Normal Conditions
+
+If:
+
+```text
+Temperature < 25°C
+```
+
+then:
+
+```text
+AC Status: OFF or ECO MODE
+```
+
+### Moderate Temperature
+
+If:
+
+```text
+Temperature between 25°C and 28°C
+```
+
+then:
+
+```text
+AC Status: ON
+AC Target Temperature: approximately 24°C to 25°C
+Cooling Level: LOW or MEDIUM
+```
+
+### High Temperature
+
+If:
+
+```text
+Temperature between 28°C and 32°C
+```
+
+then:
+
+```text
+AC Status: ON
+AC Target Temperature: approximately 22°C to 23°C
+Cooling Level: HIGH
+```
+
+### Very High Temperature
+
+If:
+
+```text
+Temperature > 32°C
+```
+
+then:
+
+```text
+AC Status: ON
+AC Target Temperature: approximately 20°C to 22°C
+Cooling Level: MAXIMUM
+```
+

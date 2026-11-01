@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IoT Smart Climate Monitoring System</title>
+  
+  <!-- Inter Font for Clean Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Chart.js for Interactive Charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Dashboard Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Top Configuration Drawer / Modal (Hidden by default or shown if not configured) -->
+  <div id="configModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">
+          <svg class="modal-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+          ThingSpeak Channel Configuration
+        </div>
+        <button id="closeConfigBtn" class="icon-btn" title="Close">&times;</button>
+      </div>
+
+      <p class="modal-desc">
+        Enter your ThingSpeak Channel ID and optional Read API Key to fetch live readings from your DHT22 sensor.
+      </p>
+
+      <form id="configForm" onsubmit="return false;">
+        <div class="form-group">
+          <label for="cfgChannelId">ThingSpeak Channel ID <span class="required">*</span></label>
+          <input type="text" id="cfgChannelId" placeholder="e.g. 2891234" required>
+          <small class="field-hint">Found on ThingSpeak Channel page under Channel ID.</small>
+        </div>
+
+        <div class="form-group">
+          <label for="cfgApiKey">ThingSpeak Read API Key (Optional for Public channels)</label>
+          <input type="text" id="cfgApiKey" placeholder="e.g. 8GHY1234ABCD5678">
+          <small class="field-hint">Found in ThingSpeak &gt; API Keys &gt; Read API Key.</small>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group half">
+            <label for="cfgResults">Readings Count</label>
+            <input type="number" id="cfgResults" value="30" min="5" max="100">
+          </div>
+          <div class="form-group half">
+            <label for="cfgInterval">Refresh Interval (sec)</label>
+            <input type="number" id="cfgInterval" value="20" min="10" max="120">
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" id="useDemoDataBtn" class="btn btn-secondary">Load Demo Data</button>
+          <button type="button" id="saveConfigBtn" class="btn btn-primary">Save & Connect</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Main Container -->
+  <div class="container">
+
+    <!-- Top Navigation & Header -->
+    <header class="header">
+      <div class="brand">
+        <div class="logo">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"></path>
+          </svg>
+        </div>
+        <div>
+          <h1 class="title">IoT Smart Climate Monitoring System</h1>
+          <div class="subtitle">Live Data from ThingSpeak &bull; Raspberry Pi Pico W + DHT22</div>
+        </div>
+      </div>
+
+      <!-- Live Status & Action Controls -->
+      <div class="header-controls">
+        <div class="status-badge" id="statusBadge">
+          <span class="status-dot status-offline" id="statusDot"></span>
+          <span class="status-text" id="statusText">Connecting...</span>
+        </div>
+
+        <button id="refreshBtn" class="btn btn-sm btn-outline" title="Refresh Live Data Now">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 4v6h-6"></path>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+          </svg>
+          <span class="refresh-label">Refresh</span>
+          <span class="timer-countdown" id="timerCountdown">20s</span>
+        </button>
+
+        <button id="openConfigBtn" class="btn btn-sm btn-outline" title="Configure Channel ID and API Key">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+          <span>Channel Settings</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Project Pipeline Banner (Minimal Visual Flow) -->
+    <div class="pipeline-bar">
+      <div class="pipeline-step"><span class="step-num">1</span> DHT22 Sensor</div>
+      <div class="pipeline-arrow">&rarr;</div>
+      <div class="pipeline-step"><span class="step-num">2</span> Raspberry Pi Pico W</div>
+      <div class="pipeline-arrow">&rarr;</div>
+      <div class="pipeline-step"><span class="step-num">3</span> ThingSpeak Cloud</div>
+      <div class="pipeline-arrow">&rarr;</div>
+      <div class="pipeline-step active"><span class="step-num">4</span> Local Laptop Dashboard</div>
+      <div class="pipeline-arrow">&rarr;</div>
+      <div class="pipeline-step highlight"><span class="step-num">5</span> Smart AC Decision</div>
+    </div>
+
+    <!-- Alert / Notice Box (Shown when API key is unconfigured or connection issue occurs) -->
+    <div id="noticeBanner" class="notice-banner hidden">
+      <div class="notice-content">
+        <span class="notice-icon">&#9432;</span>
+        <span id="noticeMessage">Please set your ThingSpeak Channel ID in settings or script.js to start receiving live readings.</span>
+      </div>
+      <div class="notice-actions">
+        <button id="quickConfigureBtn" class="btn btn-xs btn-primary">Configure Channel</button>
+        <button id="quickDemoBtn" class="btn btn-xs btn-outline">Preview Demo Data</button>
+      </div>
+    </div>
+
+    <!-- SECTION 1: LIVE SENSOR CARDS -->
+    <section class="section">
+      <div class="section-title-row">
+        <h2 class="section-heading">Live Sensor Telemetry</h2>
+        <span class="last-sync-text" id="lastSyncText">Last Updated: Never</span>
+      </div>
+
+      <div class="kpi-grid">
+        <!-- Temperature Card -->
+        <div class="card sensor-card temp-card">
+          <div class="sensor-header">
+            <div class="sensor-title-wrap">
+              <span class="sensor-icon temp-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"></path>
+                </svg>
+              </span>
+              <div>
+                <div class="sensor-label">Ambient Temperature</div>
+                <div class="sensor-sub">ThingSpeak Field 1</div>
+              </div>
+            </div>
+            <span class="status-tag tag-normal" id="tempStatusTag">Normal</span>
+          </div>
+
+          <div class="sensor-body">
+            <div class="sensor-primary-value">
+              <span class="value-number" id="currentTemp">--.-</span>
+              <span class="value-unit">&deg;C</span>
+            </div>
+          </div>
+
+          <!-- Secondary Statistical Insights -->
+          <div class="sensor-stats-row">
+            <div class="mini-stat">
+              <span class="mini-stat-label">Min</span>
+              <span class="mini-stat-value" id="minTemp">-- &deg;C</span>
+            </div>
+            <div class="mini-stat">
+              <span class="mini-stat-label">Avg</span>
+              <span class="mini-stat-value" id="avgTemp">-- &deg;C</span>
+            </div>
+            <div class="mini-stat">
+              <span class="mini-stat-label">Max</span>
+              <span class="mini-stat-value" id="maxTemp">-- &deg;C</span>
+            </div>
+          </div>
+
+          <div class="sensor-footer">
+            <span class="sensor-footer-note" id="tempTimeText">Awaiting live reading...</span>
+          </div>
+        </div>
+
+        <!-- Humidity Card -->
+        <div class="card sensor-card hum-card">
+          <div class="sensor-header">
+            <div class="sensor-title-wrap">
+              <span class="sensor-icon hum-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
+                </svg>
+              </span>
+              <div>
+                <div class="sensor-label">Relative Humidity</div>
+                <div class="sensor-sub">ThingSpeak Field 2</div>
+              </div>
+            </div>
+            <span class="status-tag tag-normal" id="humStatusTag">Normal</span>
+          </div>
+
+          <div class="sensor-body">
+            <div class="sensor-primary-value">
+              <span class="value-number" id="currentHum">--.-</span>
+              <span class="value-unit">%</span>
+            </div>
+          </div>
+
+          <!-- Secondary Statistical Insights -->
+          <div class="sensor-stats-row">
+            <div class="mini-stat">
+              <span class="mini-stat-label">Min</span>
+              <span class="mini-stat-value" id="minHum">-- %</span>
+            </div>
+            <div class="mini-stat">
+              <span class="mini-stat-label">Avg</span>
+              <span class="mini-stat-value" id="avgHum">-- %</span>
+            </div>
+            <div class="mini-stat">
+              <span class="mini-stat-label">Max</span>
+              <span class="mini-stat-value" id="maxHum">-- %</span>
+            </div>
+          </div>
+
+          <div class="sensor-footer">
+            <span class="sensor-footer-note" id="humTimeText">Awaiting live reading...</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 2 & 3: HISTORICAL GRAPHS (SEPARATE TEMPERATURE & HUMIDITY) -->
+    <section class="section">
+      <div class="section-title-row">
+        <h2 class="section-heading">Historical Sensor Telemetry</h2>
+        <span class="chart-points-badge" id="chartPointsCount">Showing last 30 readings</span>
+      </div>
+
+      <div class="charts-stack">
+        <!-- Temperature Graph Card -->
+        <div class="card chart-card">
+          <div class="chart-header">
+            <div class="chart-title-wrap">
+              <span class="chart-color-indicator temp-indicator"></span>
+              <h3 class="chart-title">Temperature Trend (&deg;C) &mdash; Field 1</h3>
+            </div>
+            <div class="chart-meta">
+              <span class="badge badge-subtle">Target Comfort: 22&deg;C &ndash; 25&deg;C</span>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas id="temperatureChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Humidity Graph Card -->
+        <div class="card chart-card">
+          <div class="chart-header">
+            <div class="chart-title-wrap">
+              <span class="chart-color-indicator hum-indicator"></span>
+              <h3 class="chart-title">Humidity Trend (%) &mdash; Field 2</h3>
+            </div>
+            <div class="chart-meta">
+              <span class="badge badge-subtle">Comfort Zone: 30% &ndash; 60%</span>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas id="humidityChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 4: SMART AUTOMATIC AC CONTROL FEATURE -->
+    <section class="section">
+      <div class="section-title-row">
+        <h2 class="section-heading">Smart AC Controller & Climate Automation</h2>
+        
+        <!-- AUTO vs MANUAL Mode Switcher -->
+        <div class="mode-toggle-group">
+          <span class="mode-label">Control Mode:</span>
+          <div class="segmented-control">
+            <button id="modeAutoBtn" class="seg-btn active" title="System automatically decides AC state based on sensor data">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
+              </svg>
+              <span>AUTO</span>
+            </button>
+            <button id="modeManualBtn" class="seg-btn" title="Manual user override of AC controls">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+              </svg>
+              <span>MANUAL</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="ac-controller-layout">
+        <!-- Left Column: AC Virtual Appliance Status Display -->
+        <div class="card ac-status-card">
+          <div class="ac-card-header">
+            <div class="ac-brand-badge">
+              <span class="ac-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
+                  <line x1="12" y1="2" x2="12" y2="12"></line>
+                </svg>
+              </span>
+              <span class="ac-title">Virtual AC Unit</span>
+            </div>
+            <div class="ac-power-badge" id="acPowerBadge">
+              <span class="power-dot" id="acPowerDot"></span>
+              <span id="acPowerText">AC STATUS: OFF</span>
+            </div>
+          </div>
+
+          <!-- Main Status KPI Display -->
+          <div class="ac-kpi-grid">
+            <div class="ac-kpi-box">
+              <span class="ac-kpi-label">Operating Mode</span>
+              <span class="ac-kpi-val" id="acModeDisplay">ECO MODE</span>
+            </div>
+            <div class="ac-kpi-box">
+              <span class="ac-kpi-label">Target Temperature</span>
+              <span class="ac-kpi-val highlight-val" id="acTargetTempDisplay">25&deg;C</span>
+            </div>
+            <div class="ac-kpi-box">
+              <span class="ac-kpi-label">Cooling Intensity</span>
+              <span class="ac-kpi-val" id="acCoolingLevelDisplay">LOW</span>
+            </div>
+          </div>
+
+          <!-- Dynamic Decision / Explanation Box -->
+          <div class="ac-reason-card" id="acReasonCard">
+            <div class="reason-header">
+              <span class="reason-icon">&#9881;</span>
+              <span class="reason-title">Controller Decision Logic</span>
+            </div>
+            <p class="reason-text" id="acReasonText">
+              Analyzing ambient temperature and humidity data...
+            </p>
+          </div>
+
+          <!-- Humidity Advisory Callout -->
+          <div id="humidityAdvisory" class="humidity-advisory-box hidden">
+            <span class="advisory-icon">&bull;</span>
+            <span id="humidityAdvisoryText">High Humidity Detected (>70%): Dehumidification Mode Recommended</span>
+          </div>
+        </div>
+
+        <!-- Right Column: Control Parameters & Mode Panels -->
+        <div class="card ac-settings-card">
+          <!-- Sub-panel A: AUTO MODE Parameters (View thresholds) -->
+          <div id="autoModePanel" class="mode-panel">
+            <div class="panel-header">
+              <h3 class="panel-title">Automated Decision Matrix</h3>
+              <span class="badge badge-green">Logic Active</span>
+            </div>
+            <p class="panel-desc">
+              The controller dynamically assesses DHT22 climate readings against predefined thermal comfort zones:
+            </p>
+
+            <ul class="rule-list">
+              <li class="rule-item" id="ruleNormal">
+                <span class="rule-range">&lt; 25&deg;C</span>
+                <span class="rule-effect">AC OFF / ECO Mode &bull; Minimal cooling</span>
+              </li>
+              <li class="rule-item" id="ruleModerate">
+                <span class="rule-range">25&deg;C &ndash; 28&deg;C</span>
+                <span class="rule-effect">AC ON &bull; Target 24&ndash;25&deg;C &bull; LOW/MED Level</span>
+              </li>
+              <li class="rule-item" id="ruleHigh">
+                <span class="rule-range">28&deg;C &ndash; 32&deg;C</span>
+                <span class="rule-effect">AC ON &bull; Target 22&ndash;23&deg;C &bull; HIGH Level</span>
+              </li>
+              <li class="rule-item" id="ruleVeryHigh">
+                <span class="rule-range">&gt; 32&deg;C</span>
+                <span class="rule-effect">AC ON &bull; Target 20&ndash;22&deg;C &bull; MAXIMUM Level</span>
+              </li>
+              <li class="rule-item" id="ruleHumid">
+                <span class="rule-range">&gt; 70% Hum</span>
+                <span class="rule-effect">Dehumidification Boost Triggered</span>
+              </li>
+            </ul>
+
+            <div class="info-callout">
+              <span>Switch to <strong>MANUAL</strong> mode above to test custom target temperatures and manual cooling levels.</span>
+            </div>
+          </div>
+
+          <!-- Sub-panel B: MANUAL MODE Controls (Interactive simulation) -->
+          <div id="manualModePanel" class="mode-panel hidden">
+            <div class="panel-header">
+              <h3 class="panel-title">Manual Override Controls</h3>
+              <span class="badge badge-amber">Manual Override</span>
+            </div>
+            <p class="panel-desc">
+              Override the automatic control algorithm and simulate manual operator settings:
+            </p>
+
+            <!-- Manual Power Switch -->
+            <div class="manual-control-group">
+              <div class="control-label-row">
+                <label>AC Power</label>
+                <span class="control-val-pill" id="manualPowerStateText">ON</span>
+              </div>
+              <div class="switch-toggle-wrap">
+                <button type="button" id="manualPowerOnBtn" class="btn btn-xs btn-primary">Turn ON</button>
+                <button type="button" id="manualPowerOffBtn" class="btn btn-xs btn-outline">Turn OFF</button>
+              </div>
+            </div>
+
+            <!-- Manual Target Temperature Slider -->
+            <div class="manual-control-group">
+              <div class="control-label-row">
+                <label for="manualTempSlider">Target Setpoint</label>
+                <span class="control-val-pill" id="manualTempSliderVal">24&deg;C</span>
+              </div>
+              <input type="range" id="manualTempSlider" min="16" max="30" step="1" value="24" class="range-slider">
+              <div class="range-marks">
+                <span>16&deg;C (Cold)</span>
+                <span>24&deg;C (Comfort)</span>
+                <span>30&deg;C (Warm)</span>
+              </div>
+            </div>
+
+            <!-- Manual Cooling Intensity Selector -->
+            <div class="manual-control-group">
+              <div class="control-label-row">
+                <label>Cooling Level</label>
+                <span class="control-val-pill" id="manualLevelText">MEDIUM</span>
+              </div>
+              <div class="btn-group-row">
+                <button type="button" class="level-btn" data-level="LOW">LOW</button>
+                <button type="button" class="level-btn active" data-level="MEDIUM">MED</button>
+                <button type="button" class="level-btn" data-level="HIGH">HIGH</button>
+                <button type="button" class="level-btn" data-level="MAXIMUM">MAX</button>
+              </div>
+            </div>
+
+            <!-- Manual Mode Selector -->
+            <div class="manual-control-group">
+              <div class="control-label-row">
+                <label>Operating Mode</label>
+              </div>
+              <div class="btn-group-row">
+                <button type="button" class="opmode-btn active" data-mode="COOLING">Cooling</button>
+                <button type="button" class="opmode-btn" data-mode="ECO">Eco</button>
+                <button type="button" class="opmode-btn" data-mode="DEHUMIDIFY">Dehumidify</button>
+                <button type="button" class="opmode-btn" data-mode="FAN ONLY">Fan Only</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="footer-left">
+        <strong>IoT Smart Climate Monitoring System</strong> &bull; AI457 Internet of Things and Edge Computing
+      </div>
+      <div class="footer-right">
+        Wokwi &bull; Raspberry Pi Pico W &bull; DHT22 &bull; ThingSpeak API
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- JavaScript Logic -->
+  <script src="script.js"></script>
+</body>
+</html>
